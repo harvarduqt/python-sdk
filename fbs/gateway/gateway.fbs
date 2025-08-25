@@ -1,0 +1,362 @@
+namespace gateway;
+
+enum Side : byte {
+  Buy = 0,
+  Sell = 1,
+}
+
+table MarketMeta {
+  name: string;
+  base: string;
+  quote: string;
+  flat_fee: long;
+  taker_fee: long;
+  maker_fee: long;
+  fee_denom: long;
+}
+
+table ConversionElement {
+  symbol: string;
+  amount: long;
+}
+
+table ConversionMeta {
+  name: string;
+  from: [ConversionElement];
+  to: [ConversionElement];
+}
+
+table OptionsMeta {
+  name: string;
+  from: [ConversionElement];
+  flat_fee: [ConversionElement];
+  to: [ConversionElement];
+  option: string;
+}
+
+table SymbolMeta {
+  name: string;
+  movable: bool;
+}
+
+table LedgerMetaSubscription {}
+
+table LedgerMetaStream {
+  symbols: [SymbolMeta];
+}
+
+table DomainMetaSubscription {
+  domain: string;
+}
+
+table DomainsSubscription {
+}
+
+table DomainMarketDataSubscription {
+  domain: string;
+}
+
+table DomainMetaStream {
+  domain: string;
+  conversions: [ConversionMeta];
+  markets: [MarketMeta];
+  options: [OptionsMeta];
+  quote: string;
+}
+
+table DomainsStream {
+  domains: [string];
+}
+
+table MarketData {
+  name: string;
+  best_bid: long = null;
+  best_offer: long = null;
+  mark_px: long = null;
+  vol: long;
+  ntnl_vol: long;
+}
+
+table DomainMarketDataStream {
+  domain: string;
+  markets: [MarketData];
+}
+
+table TradeSubscription {
+  domain: string;
+  market: string;
+}
+
+table FillsSubscription {
+  domain: string;
+  account: string;
+}
+
+table OpenOrdersSubscription {
+  domain: string;
+  account: string;
+}
+
+table PositionsSubscription {
+  domain: string;
+  account: string;
+}
+
+table L2BookSubscription {
+  domain: string;
+  market: string;
+  n_sig_figs: long = null;
+  mantissa: long = null;
+  n_levels: long;
+}
+
+table LeaderboardSubscription {
+  domain: string;
+}
+
+table IssuedOptionsSubscription {
+  domain: string;
+  account: string;
+}
+
+union Subscription {
+  TradeSubscription,
+  FillsSubscription,
+  OpenOrdersSubscription,
+  PositionsSubscription,
+  L2BookSubscription,
+  DomainMetaSubscription,
+  DomainsSubscription,
+  DomainMarketDataSubscription,
+  LedgerMetaSubscription,
+  LeaderboardSubscription,
+  IssuedOptionsSubscription,
+}
+
+table SubscriptionResponse {
+  uuid: string;
+  subscribe: bool;
+  forced: bool;
+  subscription: Subscription;
+}
+
+table SimpleSuccessResponse {
+  uuid: string;
+  msg: string;
+}
+
+table AddOrderResponse {
+  uuid: string;
+  order_id: long;
+  side: Side;
+  base: long;
+  quote: long;
+  msg: string;
+  market: string;
+}
+
+table TradesStream {
+  domain: string;
+  market: string;
+  is_snapshot: bool;
+  ts: long;
+  end_ts: long;
+  trades: [Trade];
+}
+
+table Trade {
+  ts: long;
+  market: string;
+  px: long;
+  sz: long;
+  taker_side: Side;
+  time: long;
+}
+
+enum AccountType : byte {
+  Main = 0,
+  Collateral = 1,
+}
+
+
+table PositionDelta {
+  ts: long;
+  account_type: AccountType;
+  symbol: string;
+  delta: long;
+}
+
+table AccountPosition {
+  account_type: AccountType;
+  symbol: string;
+  position: long;
+  movable: bool;
+}
+
+table AccountIssuedOption {
+  name: string;
+  position: long;
+}
+
+table IssuedOptionDelta {
+  ts: long;
+  name: string;
+  delta: long;
+}
+
+table IssuedOptionsDeltaData {
+  deltas: [IssuedOptionDelta];
+  global_deltas: [IssuedOptionDelta];
+}
+
+table IssuedOptionsSnapshot {
+  issuances: [AccountIssuedOption];
+  global_issuances: [AccountIssuedOption];
+}
+
+union WsIssuedOptions {
+  IssuedOptionsSnapshot,
+  IssuedOptionsDeltaData,
+}
+
+table IssuedOptionsStream {
+  domain: string;
+  account: string;
+  ts: long;
+  end_ts: long;
+  issuances: WsIssuedOptions;
+}
+
+table PositionDeltasData {
+  deltas: [PositionDelta];
+}
+
+table PositionsSnapshot {
+  positions: [AccountPosition];
+}
+
+union WsPositions {
+  PositionsSnapshot,
+  PositionDeltasData,
+}
+
+table PositionsStream {
+  domain: string;
+  account: string;
+  ts: long;
+  end_ts: long;
+  positions: WsPositions;
+}
+
+table Fill {
+  ts: long;
+  oid: long;
+  account: string;
+  market: string;
+  px: long;
+  sz: long;
+  side: Side;
+  is_taker: bool;
+  time: long;
+}
+
+table FillsStream {
+  domain: string;
+  account: string;
+  is_snapshot: bool;
+  ts: long;
+  end_ts: long;
+  fills: [Fill];
+}
+
+table OrderDelta {
+  ts: long;
+  oid: long;
+  market: string;
+  is_add: bool;
+  is_remove: bool;
+  px: long;
+  new_sz: long;  
+  side: Side;
+}
+
+table OrderDeltasData {
+  deltas: [OrderDelta];
+}
+
+table Order {
+  market: string;
+  oid: long;
+  px: long;
+  side: Side;
+  sz: long;
+}
+
+table OpenOrdersSnapshot {
+  orders: [Order];
+}
+
+union WsOpenOrders {
+  OpenOrdersSnapshot,
+  OrderDeltasData,
+}
+
+table OpenOrdersStream {
+  domain: string;
+  account: string;
+  ts: long;
+  end_ts: long;
+  orders: WsOpenOrders;
+} 
+
+table Level {
+  px: long;
+  sz: long;
+  n: long;
+}
+
+table L2BookStream {
+  domain: string;
+  market: string;
+  bids: [Level];
+  asks: [Level];
+} 
+
+table AccountPnl {
+  account: string;
+  pnl: long;
+}
+
+table LeaderboardStream {
+  domain: string;
+  leaderboard: [AccountPnl];
+}
+
+table ErrorMessage {
+  uuid: string;
+  message: string;
+}
+
+union ServerResponseUnion {
+  LeaderboardStream,
+  SubscriptionResponse,
+  SimpleSuccessResponse,
+  AddOrderResponse,
+  TradesStream,
+  FillsStream,
+  OpenOrdersStream,
+  PositionsStream,
+  L2BookStream,
+  ErrorMessage,
+  DomainMetaStream,
+  DomainsStream,
+  DomainMarketDataStream,
+  LedgerMetaStream,
+  IssuedOptionsStream,
+}
+
+table ServerResponse {
+  response: ServerResponseUnion;
+}
+
+root_type ServerResponse;

@@ -1,0 +1,93 @@
+include "../gateway/gateway.fbs";
+namespace client;
+
+enum OrderType : byte {
+  Limit = 0,
+  Market = 1,
+}
+
+enum Tif: byte {
+  Gtc = 0,
+  Ioc = 1,
+  Alo = 2,
+}
+
+table AddOrderRequest {
+  domain: string;
+  market: string;
+  side: gateway.Side;
+  px: long;
+  sz: long;
+  collateral: long;
+  order_type: OrderType;
+  tif: Tif;
+}
+
+table CancelOrderRequest {
+  domain: string;
+  market: string;
+  oid: long;
+}
+
+table DepositRequest {
+  domain: string;
+  symbol: string;
+  amount: long;
+}
+
+table WithdrawRequest {
+  domain: string;
+  symbol: string;
+  amount: long;
+}
+
+table ConversionRequest {
+  domain: string;
+  conversion: string;
+  mult: long;
+}
+
+table ExerciseOptionRequest {
+  domain: string;
+  name: string;
+  amount: long;
+}
+
+table IssueOptionRequest {
+  domain: string;
+  name: string;
+  amount: long;
+}
+
+union UnaryRequestUnion {
+  AddOrderRequest,
+  CancelOrderRequest,
+  DepositRequest,
+  WithdrawRequest,
+  ConversionRequest,
+  IssueOptionRequest,
+  ExerciseOptionRequest,
+}
+
+table UnaryRequest {
+  uuid: string;
+  account: string;
+  request: UnaryRequestUnion;
+}
+
+table SubscriptionRequest {
+  uuid: string;
+  subscribe: bool;
+  subscription: gateway.Subscription;
+}
+
+union ClientRequestUnion {
+  UnaryRequest,
+  SubscriptionRequest,
+}
+
+table ClientRequest {
+  request: ClientRequestUnion;
+}
+
+root_type ClientRequest;

@@ -1,0 +1,17 @@
+union ServerResponseUnion {
+  LeaderboardStream,            
+  SubscriptionResponse,         DONE
+  SimpleSuccessResponse,        DONE
+  AddOrderResponse,             DONE
+  TradesStream,                 DONE
+  FillsStream,                  DONE
+  OpenOrdersStream,             DONE
+  PositionsStream,              DONE
+  L2BookStream,                 DONE
+  ErrorMessage,                 DONE
+  DomainMetaStream,             DONE
+  DomainsStream,                DONE
+  DomainMarketDataStream,       DONE
+  LedgerMetaStream,             DONE
+  IssuedOptionsStream,
+}
