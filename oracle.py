@@ -606,7 +606,6 @@ class OracleClient:
                     if delta.IsRemove():
                         for i, order in enumerate(self.open_orders[market]):
                             if order['oid'] == delta.Oid():
-                                print('remove')
                                 del self.open_orders[market][i]
                                 break
                     if not delta.IsAdd() and not delta.IsRemove():
@@ -715,11 +714,11 @@ class OracleClient:
     """Handlers for starting and stopping the client"""
     async def start_client(self, print_metadata: bool = False):
         await self.ws_client.connect()
-        print("WebSocket connected")
+        # print("WebSocket connected")
         self.listen_task = asyncio.create_task(
             self.ws_client.listen(self.message_handler)
         )
-        print("WebSocket client started, listening for messages...\n")
+        print("WebSocket client started, listening for messages...")
 
         await self.__domain_subscription(subscribe=True)
         await self.__ledger_meta_subscription(subscribe=True)
@@ -730,10 +729,8 @@ class OracleClient:
             counter += 1
             assert counter < 300, "Oracle is unavailable, timed out after 3 seconds."
         
-        print("\033[1;32mOracleClient started successfully!\033[0m")
         if print_metadata:
             print("Oracle Metadata:", self.oracle_metadata)
-        print()
 
     async def set_account_and_domain(self, account: str, domain: str, print_metadata: bool = False):
         assert not self.account, "Account already set"
@@ -756,10 +753,10 @@ class OracleClient:
             counter += 1
             assert counter < 300, f"Failed to Subscribe to the {self.domain_metadata['Domain']} domain. Timed out after 3 seconds"
 
-        print(f"\033[1;32mSelected {domain} domain successfully!\033[0m")
+        print("\033[1;32mOracleClient started successfully!\033[0m")
+        # print(f"\033[1;32mSelected {domain} domain successfully!\033[0m")
         if print_metadata:
             print(f"Domain Metadata: {self.domain_metadata}")
-        print()
     
     @require_account_and_domain
     async def subscribe_market(self, market: str):

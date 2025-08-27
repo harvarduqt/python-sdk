@@ -237,13 +237,13 @@ class ClientExerciseOptionRequest:
     def to_bytes(self, account: str) -> tuple[str, bytes]:
         builder = flatbuffers.Builder()
         domain_off = builder.CreateString(self.domain)
-        market_off = builder.CreateString(self.market)
+        name_off = builder.CreateString(self.name)
 
         # ExerciseOptionRequest
         ExerciseOptionRequest.ExerciseOptionRequestStart(builder)
         ExerciseOptionRequest.ExerciseOptionRequestAddDomain(builder, domain_off)
-        ExerciseOptionRequest.ExerciseOptionRequestAddMarket(builder, market_off)
-        ExerciseOptionRequest.ExerciseOptionRequestAddSz(builder, self.size)
+        ExerciseOptionRequest.ExerciseOptionRequestAddName(builder, name_off)
+        ExerciseOptionRequest.ExerciseOptionRequestAddAmount(builder, self.size)
         exercise_req = ExerciseOptionRequest.ExerciseOptionRequestEnd(builder)
 
         # UnaryRequest
@@ -275,13 +275,13 @@ class ClientIssueOptionRequest:
     def to_bytes(self, account: str) -> tuple[str, bytes]:
         builder = flatbuffers.Builder()
         domain_off = builder.CreateString(self.domain)
-        market_off = builder.CreateString(self.market)
+        name_off = builder.CreateString(self.name)
 
         # IssueOptionRequest
         IssueOptionRequest.IssueOptionRequestStart(builder)
         IssueOptionRequest.IssueOptionRequestAddDomain(builder, domain_off)
-        IssueOptionRequest.IssueOptionRequestAddMarket(builder, market_off)
-        IssueOptionRequest.IssueOptionRequestAddSz(builder, self.size)
+        IssueOptionRequest.IssueOptionRequestAddName(builder, name_off)
+        IssueOptionRequest.IssueOptionRequestAddAmount(builder, self.size)
         issue_req = IssueOptionRequest.IssueOptionRequestEnd(builder)
 
         # UnaryRequest
