@@ -34,6 +34,29 @@ table OptionsMeta {
   option: string;
 }
 
+table TwoSidedMeta {
+  name: string;
+  base: string;
+  quote: string;
+  flat_fee: long;
+}
+
+table SecondPriceMeta {
+  name: string;
+  flat_fee: long;
+  quote: string;
+  prize: [ConversionElement];
+}
+
+union AuctionMetaUnion {
+  TwoSidedMeta,
+  SecondPriceMeta,
+}
+
+table AuctionMeta {
+  meta: AuctionMetaUnion;
+}
+
 table SymbolMeta {
   name: string;
   movable: bool;
@@ -61,6 +84,7 @@ table DomainMetaStream {
   conversions: [ConversionMeta];
   markets: [MarketMeta];
   options: [OptionsMeta];
+  auctions: [AuctionMeta];
   quote: string;
 }
 
@@ -281,7 +305,8 @@ table OrderDelta {
 }
 
 table OrderDeltasData {
-  deltas: [OrderDelta];
+  clob_deltas: [OrderDelta];
+  auction_deltas: [OrderDelta];
 }
 
 table Order {
@@ -293,7 +318,8 @@ table Order {
 }
 
 table OpenOrdersSnapshot {
-  orders: [Order];
+  clob_orders: [Order];
+  auction_orders: [Order];
 }
 
 union WsOpenOrders {

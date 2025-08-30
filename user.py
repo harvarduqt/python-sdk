@@ -2,7 +2,8 @@ from oracle import OracleClient
 from enums import Side, Tif
 import asyncio
 
-haorzhe = OracleClient("ws://localhost:8000/ws")
+# haorzhe = OracleClient("ws://localhost:8000/ws")
+haorzhe = OracleClient("ws://api.oracle.huqt.xyz/ws")
 
 async def trade_handler():
     print("\n\033[1;32m-------- Below are the logs for user algorithm --------\033[0m")
@@ -10,7 +11,6 @@ async def trade_handler():
     # market states/open orders/everything is tracked nicely by the oracle client
     # you should have like a while True loop to keep updating
 
-    # await haorzhe.cancel_order(market='book', order_id=22)
     while True:
         print("hello world!")
         await asyncio.sleep(10)

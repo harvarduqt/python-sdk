@@ -5,3 +5,4 @@
 class OrderType(object):
     Limit = 0
     Market = 1
+    Auction = 2

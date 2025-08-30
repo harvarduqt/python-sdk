@@ -25,7 +25,7 @@ class OpenOrdersSnapshot(object):
         self._tab = flatbuffers.table.Table(buf, pos)
 
     # OpenOrdersSnapshot
-    def Orders(self, j):
+    def ClobOrders(self, j):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             x = self._tab.Vector(o)
@@ -38,34 +38,71 @@ class OpenOrdersSnapshot(object):
         return None
 
     # OpenOrdersSnapshot
-    def OrdersLength(self):
+    def ClobOrdersLength(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # OpenOrdersSnapshot
-    def OrdersIsNone(self):
+    def ClobOrdersIsNone(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         return o == 0
 
+    # OpenOrdersSnapshot
+    def AuctionOrders(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            x = self._tab.Vector(o)
+            x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
+            x = self._tab.Indirect(x)
+            from gateway.Order import Order
+            obj = Order()
+            obj.Init(self._tab.Bytes, x)
+            return obj
+        return None
+
+    # OpenOrdersSnapshot
+    def AuctionOrdersLength(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.VectorLen(o)
+        return 0
+
+    # OpenOrdersSnapshot
+    def AuctionOrdersIsNone(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        return o == 0
+
 def OpenOrdersSnapshotStart(builder):
-    builder.StartObject(1)
+    builder.StartObject(2)
 
 def Start(builder):
     OpenOrdersSnapshotStart(builder)
 
-def OpenOrdersSnapshotAddOrders(builder, orders):
-    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(orders), 0)
+def OpenOrdersSnapshotAddClobOrders(builder, clobOrders):
+    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(clobOrders), 0)
 
-def AddOrders(builder, orders):
-    OpenOrdersSnapshotAddOrders(builder, orders)
+def AddClobOrders(builder, clobOrders):
+    OpenOrdersSnapshotAddClobOrders(builder, clobOrders)
 
-def OpenOrdersSnapshotStartOrdersVector(builder, numElems):
+def OpenOrdersSnapshotStartClobOrdersVector(builder, numElems):
     return builder.StartVector(4, numElems, 4)
 
-def StartOrdersVector(builder, numElems):
-    return OpenOrdersSnapshotStartOrdersVector(builder, numElems)
+def StartClobOrdersVector(builder, numElems):
+    return OpenOrdersSnapshotStartClobOrdersVector(builder, numElems)
+
+def OpenOrdersSnapshotAddAuctionOrders(builder, auctionOrders):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(auctionOrders), 0)
+
+def AddAuctionOrders(builder, auctionOrders):
+    OpenOrdersSnapshotAddAuctionOrders(builder, auctionOrders)
+
+def OpenOrdersSnapshotStartAuctionOrdersVector(builder, numElems):
+    return builder.StartVector(4, numElems, 4)
+
+def StartAuctionOrdersVector(builder, numElems):
+    return OpenOrdersSnapshotStartAuctionOrdersVector(builder, numElems)
 
 def OpenOrdersSnapshotEnd(builder):
     return builder.EndObject()

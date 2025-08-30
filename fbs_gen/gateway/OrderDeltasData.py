@@ -25,7 +25,7 @@ class OrderDeltasData(object):
         self._tab = flatbuffers.table.Table(buf, pos)
 
     # OrderDeltasData
-    def Deltas(self, j):
+    def ClobDeltas(self, j):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             x = self._tab.Vector(o)
@@ -38,34 +38,71 @@ class OrderDeltasData(object):
         return None
 
     # OrderDeltasData
-    def DeltasLength(self):
+    def ClobDeltasLength(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # OrderDeltasData
-    def DeltasIsNone(self):
+    def ClobDeltasIsNone(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         return o == 0
 
+    # OrderDeltasData
+    def AuctionDeltas(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            x = self._tab.Vector(o)
+            x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
+            x = self._tab.Indirect(x)
+            from gateway.OrderDelta import OrderDelta
+            obj = OrderDelta()
+            obj.Init(self._tab.Bytes, x)
+            return obj
+        return None
+
+    # OrderDeltasData
+    def AuctionDeltasLength(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.VectorLen(o)
+        return 0
+
+    # OrderDeltasData
+    def AuctionDeltasIsNone(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        return o == 0
+
 def OrderDeltasDataStart(builder):
-    builder.StartObject(1)
+    builder.StartObject(2)
 
 def Start(builder):
     OrderDeltasDataStart(builder)
 
-def OrderDeltasDataAddDeltas(builder, deltas):
-    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(deltas), 0)
+def OrderDeltasDataAddClobDeltas(builder, clobDeltas):
+    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(clobDeltas), 0)
 
-def AddDeltas(builder, deltas):
-    OrderDeltasDataAddDeltas(builder, deltas)
+def AddClobDeltas(builder, clobDeltas):
+    OrderDeltasDataAddClobDeltas(builder, clobDeltas)
 
-def OrderDeltasDataStartDeltasVector(builder, numElems):
+def OrderDeltasDataStartClobDeltasVector(builder, numElems):
     return builder.StartVector(4, numElems, 4)
 
-def StartDeltasVector(builder, numElems):
-    return OrderDeltasDataStartDeltasVector(builder, numElems)
+def StartClobDeltasVector(builder, numElems):
+    return OrderDeltasDataStartClobDeltasVector(builder, numElems)
+
+def OrderDeltasDataAddAuctionDeltas(builder, auctionDeltas):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(auctionDeltas), 0)
+
+def AddAuctionDeltas(builder, auctionDeltas):
+    OrderDeltasDataAddAuctionDeltas(builder, auctionDeltas)
+
+def OrderDeltasDataStartAuctionDeltasVector(builder, numElems):
+    return builder.StartVector(4, numElems, 4)
+
+def StartAuctionDeltasVector(builder, numElems):
+    return OrderDeltasDataStartAuctionDeltasVector(builder, numElems)
 
 def OrderDeltasDataEnd(builder):
     return builder.EndObject()

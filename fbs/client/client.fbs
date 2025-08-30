@@ -4,6 +4,7 @@ namespace client;
 enum OrderType : byte {
   Limit = 0,
   Market = 1,
+  Auction = 2,
 }
 
 enum Tif: byte {

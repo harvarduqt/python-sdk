@@ -2,7 +2,8 @@ from oracle import OracleClient
 from enums import Side, Tif
 import asyncio
 
-haorzhe = OracleClient("ws://localhost:8000/ws")
+# haorzhe = OracleClient("ws://localhost:8000/ws")
+haorzhe = OracleClient("ws://api.oracle.huqt.xyz/ws")
 
 async def trade_handler():
     print("\n\033[1;32m-------- Below are the logs for user algorithm --------\033[0m")
@@ -46,7 +47,7 @@ async def trade_handler():
 async def main():
     ## change these lines for only the markets you want
     await haorzhe.start_client()
-    await haorzhe.set_account_and_domain(account="andrew", domain="test")
+    await haorzhe.set_account_and_domain(account="joe", domain="test")
 
     await haorzhe.subscribe_market("book")
     await haorzhe.subscribe_market("book2")

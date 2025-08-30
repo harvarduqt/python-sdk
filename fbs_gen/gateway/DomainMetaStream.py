@@ -107,14 +107,39 @@ class DomainMetaStream(object):
         return o == 0
 
     # DomainMetaStream
-    def Quote(self):
+    def Auctions(self, j):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        if o != 0:
+            x = self._tab.Vector(o)
+            x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
+            x = self._tab.Indirect(x)
+            from gateway.AuctionMeta import AuctionMeta
+            obj = AuctionMeta()
+            obj.Init(self._tab.Bytes, x)
+            return obj
+        return None
+
+    # DomainMetaStream
+    def AuctionsLength(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        if o != 0:
+            return self._tab.VectorLen(o)
+        return 0
+
+    # DomainMetaStream
+    def AuctionsIsNone(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        return o == 0
+
+    # DomainMetaStream
+    def Quote(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
         if o != 0:
             return self._tab.String(o + self._tab.Pos)
         return None
 
 def DomainMetaStreamStart(builder):
-    builder.StartObject(5)
+    builder.StartObject(6)
 
 def Start(builder):
     DomainMetaStreamStart(builder)
@@ -161,8 +186,20 @@ def DomainMetaStreamStartOptionsVector(builder, numElems):
 def StartOptionsVector(builder, numElems):
     return DomainMetaStreamStartOptionsVector(builder, numElems)
 
+def DomainMetaStreamAddAuctions(builder, auctions):
+    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(auctions), 0)
+
+def AddAuctions(builder, auctions):
+    DomainMetaStreamAddAuctions(builder, auctions)
+
+def DomainMetaStreamStartAuctionsVector(builder, numElems):
+    return builder.StartVector(4, numElems, 4)
+
+def StartAuctionsVector(builder, numElems):
+    return DomainMetaStreamStartAuctionsVector(builder, numElems)
+
 def DomainMetaStreamAddQuote(builder, quote):
-    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(quote), 0)
+    builder.PrependUOffsetTRelativeSlot(5, flatbuffers.number_types.UOffsetTFlags.py_type(quote), 0)
 
 def AddQuote(builder, quote):
     DomainMetaStreamAddQuote(builder, quote)

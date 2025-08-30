@@ -54,7 +54,9 @@ from fbs_gen.gateway.TradesStream import TradesStream
 from fbs_gen.gateway.AddOrderResponse import AddOrderResponse
 from fbs_gen.gateway.ErrorMessage import ErrorMessage
 from fbs_gen.gateway.SimpleSuccessResponse import SimpleSuccessResponse
-
+from fbs_gen.gateway.AuctionMetaUnion import AuctionMetaUnion
+from fbs_gen.gateway.TwoSidedMeta import TwoSidedMeta
+from fbs_gen.gateway.SecondPriceMeta import SecondPriceMeta
 
 from fbs_gen.client.Tif import Tif
 from fbs_gen.client.OrderType import OrderType
@@ -95,10 +97,12 @@ class OracleClient:
             'Markets Metadata': [],
             'Conversion Markets Metadata': [],
             'Options Markets Metadata': [],
+            'Auctions Markets Metadata': [],
             'Markets state': []
         }
 
         self.open_orders: dict[str, list] = {}
+        self.open_auction_orders: dict[str, list] = {}
         self.positions: dict[str, int] = {}
         self.recent_fills: list[dict] = []
         self.book: dict[str, dict[str, int]] = {}
@@ -108,6 +112,9 @@ class OracleClient:
     """Query the states of the object"""
     def get_self_open_orders(self) -> dict[str, list]:
         return copy.deepcopy(self.open_orders)
+    
+    def get_self_open_auction_orders(self) -> dict[str, list]:
+        return copy.deepcopy(self.open_auction_orders)
     
     def get_self_positions(self) -> dict[str, int]:
         return copy.deepcopy(self.positions)
@@ -197,7 +204,7 @@ class OracleClient:
         try:
             await self.__place_limit_order(market, side, price, size, tif)
         except Exception as e:
-            print(f"Error placing order. {e}")
+            print(f"Error placing limit order. {e}")
     
     @require_account_and_domain
     async def __place_limit_order(self, market: str, side: int, price: int, size: int, tif: int):
@@ -228,9 +235,9 @@ class OracleClient:
     
     async def place_market_order(self, market: str, side: int, collateral: int):
         try:
-            await self.__place_market_order(self, market, side, collateral)
+            await self.__place_market_order(market, side, collateral)
         except Exception as e:
-            print(f"Error placing order. {e}")
+            print(f"Error placing market order. {e}")
     
     @require_account_and_domain
     async def __place_market_order(self, market: str, side: int, collateral: int):
@@ -256,6 +263,35 @@ class OracleClient:
         })
         await self.ws_client.send(raw_msg)
 
+    async def place_auction_order(self, market: str, price: int):
+        try:
+            await self.__place_auction_order(market, price)
+        except Exception as e:
+            print(f"Error placing auction order. {e}")
+    
+    @require_account_and_domain
+    async def __place_auction_order(self, market: str, price: int):
+        assert market in self.domain_metadata['Available Markets']['auctions'],f"Invalid auction market: {market}. Available Markets are: {self.domain_metadata['Available Markets']}"
+        assert price > 0, "Price must be positive for auction orders"
+
+        uuid, raw_msg = ClientAddOrderRequest(
+            domain = self.domain_metadata['Domain'],
+            market = market,
+            side = Side.Buy,
+            px = price,
+            sz = 1,
+            collateral = 0,
+            order_type = OrderType.Auction,
+            tif = Tif.Alo
+        ).to_bytes(self.account)
+        self.pending_orders[uuid] = (int(time.time() * 1000), {
+            'market': market,
+            'order type': 'Auction',
+            'side': 'buy',
+            'price': price,
+        })
+        await self.ws_client.send(raw_msg)
+    
     async def cancel_order(self, market: str, order_id: int):
         try:
             await self.__cancel_order(market, order_id)
@@ -285,7 +321,7 @@ class OracleClient:
     
     @require_account_and_domain
     async def __deposit(self, symbol: str, amount: int):
-        assert True, "some" # TODO ASSERT withdraw symbols
+        assert True, "some" # TODO ASSERT deposit symbols
 
         uuid, raw_msg = ClientDepositRequest(
             domain=self.domain_metadata['Domain'],
@@ -426,10 +462,9 @@ class OracleClient:
     def __handle_simple_success(self, tbl):
         ssr = SimpleSuccessResponse()
         ssr.Init(tbl.Bytes, tbl.Pos)
-        print(f'received simple success message for uuid {ssr.Uuid()} for reason {ssr.Msg()}')
 
-        if b2s(ssr.Uuid()) in self.pending_orders:
-            del self.pending_orders[b2s(ssr.Uuid())]
+        if b2s(ssr.Uuid()) in self.pending_requests:
+            del self.pending_requests[b2s(ssr.Uuid())]
         else:
             print(f"\033[1;33m[Warning]\033[0m received success from uuid: {b2s(ssr.Uuid())}", end=" ")
             print("but this order was not placed through the current python client")
@@ -488,10 +523,25 @@ class OracleClient:
         dms = DomainMetaStream()
         dms.Init(tbl.Bytes, tbl.Pos)
 
+        auctions_name = []
+        for i in range(dms.AuctionsLength()):
+            am = dms.Auctions(i)
+            u = am.Meta()
+            match am.MetaType():
+                case AuctionMetaUnion.TwoSidedMeta:
+                    tsm = TwoSidedMeta()
+                    tsm.Init(u.Bytes, u.Pos)
+                    auctions_name.append(b2s(tsm.Name()))
+                case AuctionMetaUnion.SecondPriceMeta:
+                    spm = SecondPriceMeta()
+                    spm.Init(u.Bytes, u.Pos)
+                    auctions_name.append(b2s(spm.Name()))
+        
         market_names = {
             "conversions": [b2s(dms.Conversions(i).Name()) for i in range(dms.ConversionsLength())],
             "markets": [b2s(dms.Markets(i).Name()) for i in range(dms.MarketsLength())],
-            "options": [b2s(dms.Options(i).Name()) for i in range(dms.OptionsLength())]
+            "options": [b2s(dms.Options(i).Name()) for i in range(dms.OptionsLength())],
+            "auctions": auctions_name,
         }
 
         if not self.domain_metadata['Available Markets']:
@@ -510,6 +560,7 @@ class OracleClient:
         self.domain_metadata['Markets Metadata'] = []
         self.domain_metadata['Conversion Markets Metadata'] = []
         self.domain_metadata['Options Markets Metadata'] = []
+        self.domain_metadata['Auctions Markets Metadata'] = []
 
         for i in range(dms.ConversionsLength()):
             conv = dms.Conversions(i)
@@ -540,6 +591,31 @@ class OracleClient:
                 "flat_fee": [(b2s(opt.FlatFee(j).Symbol()), opt.FlatFee(j).Amount()) for j in range(opt.ToLength())],
                 "option": b2s(opt.Option())
             })
+        
+        for i in range(dms.AuctionsLength()):
+            am = dms.Auctions(i)
+            u = am.Meta()
+            match am.MetaType():
+                case AuctionMetaUnion.TwoSidedMeta:
+                    tsm = TwoSidedMeta()
+                    tsm.Init(u.Bytes, u.Pos)
+                    self.domain_metadata['Auctions Markets Metadata'].append({
+                        "name": b2s(tsm.Name()),
+                        "type": "two sided",
+                        "quote": b2s(tsm.Quote()),
+                        "flat fee": tsm.FlatFee(),
+                        "base": b2s(tsm.Base())
+                    })
+                case AuctionMetaUnion.SecondPriceMeta:
+                    spm = SecondPriceMeta()
+                    spm.Init(u.Bytes, u.Pos)
+                    self.domain_metadata['Auctions Markets Metadata'].append({
+                        "name": b2s(spm.Name()),
+                        "type": "second price",
+                        "quote": b2s(spm.Quote()),
+                        "flat fee": spm.FlatFee(),
+                        "prize": [(b2s(spm.Prize(i).Symbol()), spm.Prize(i).Amount()) for i in range(spm.PrizeLength())]
+                    })
             
     def __handle_domain_market_data_stream(self, tbl):
         dmds = DomainMarketDataStream()
@@ -568,8 +644,8 @@ class OracleClient:
                 snapshot.Init(orders.Bytes, orders.Pos)
 
                 self.open_orders = {}
-                for i in range(snapshot.OrdersLength()):
-                    order = snapshot.Orders(i)
+                for i in range(snapshot.ClobOrdersLength()):
+                    order = snapshot.ClobOrders(i)
                     market = b2s(order.Market())
                     order_json = {
                         "oid": order.Oid(),
@@ -581,14 +657,29 @@ class OracleClient:
                         self.open_orders[market] = [order_json]
                     else:
                         self.open_orders[market].append(order_json)
+                    
+                self.open_auction_orders = {}
+                for i in range(snapshot.AuctionOrdersLength()):
+                    order = snapshot.AuctionOrders(i)
+                    market = b2s(order.Market())
+                    order_json = {
+                        "oid": order.Oid(),
+                        "price": order.Px(),
+                        "size": order.Sz(),
+                        "side": order.Side()
+                    }
+                    if market not in self.open_auction_orders:
+                        self.open_auction_orders[market] = [order_json]
+                    else:
+                        self.open_auction_orders[market].append(order_json)
 
             case WsOpenOrders.OrderDeltasData:
                 deltas = OrderDeltasData()
                 orders = oos.Orders()
                 deltas.Init(orders.Bytes, orders.Pos)
 
-                for i in range(deltas.DeltasLength()):
-                    delta = deltas.Deltas(i)
+                for i in range(deltas.ClobDeltasLength()):
+                    delta = deltas.ClobDeltas(i)
                     market = b2s(delta.Market())
                     order_json = {
                         "oid": delta.Oid(),
@@ -610,6 +701,33 @@ class OracleClient:
                                 break
                     if not delta.IsAdd() and not delta.IsRemove():
                         for order in self.open_orders[market]:
+                            if order['oid'] == delta.Oid():
+                                order['size'] = delta.NewSz()
+                                break
+                
+                for i in range(deltas.AuctionDeltasLength()):
+                    delta = deltas.AuctionDeltas(i)
+                    market = b2s(delta.Market())
+                    order_json = {
+                        "oid": delta.Oid(),
+                        "px": delta.Px(),
+                        "new_sz": delta.NewSz(),
+                        "side": delta.Side()
+                    }
+
+                    if delta.IsAdd():
+                        market = b2s(delta.Market())
+                        if market not in self.open_auction_orders:
+                            self.open_auction_orders[market] = [order_json]
+                        else:
+                            self.open_auction_orders[market].append(order_json)
+                    if delta.IsRemove():
+                        for i, order in enumerate(self.open_auction_orders[market]):
+                            if order['oid'] == delta.Oid():
+                                del self.open_auction_orders[market][i]
+                                break
+                    if not delta.IsAdd() and not delta.IsRemove():
+                        for order in self.open_auction_orders[market]:
                             if order['oid'] == delta.Oid():
                                 order['size'] = delta.NewSz()
                                 break
