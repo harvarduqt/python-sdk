@@ -57,12 +57,12 @@ from fbs_gen.gateway.SimpleSuccessResponse import SimpleSuccessResponse
 from fbs_gen.gateway.AuctionMetaUnion import AuctionMetaUnion
 from fbs_gen.gateway.TwoSidedMeta import TwoSidedMeta
 from fbs_gen.gateway.SecondPriceMeta import SecondPriceMeta
+from fbs_gen.gateway.IssuedOptionsSnapshot import IssuedOptionsSnapshot
+from fbs_gen.gateway.IssuedOptionsDeltaData import IssuedOptionsDeltaData
 
 from fbs_gen.client.Tif import Tif
 from fbs_gen.client.OrderType import OrderType
 from fbs_gen.gateway.Side import Side
-
-from fbs_gen.gateway.Subscription import Subscription
 
 def b2s(b):
     return b.decode("utf-8") if b is not None else None
@@ -107,6 +107,8 @@ class OracleClient:
         self.recent_fills: list[dict] = []
         self.book: dict[str, dict[str, int]] = {}
         self.recent_trades: dict[str, list] = {}
+        self.self_issued_options_quantity: dict[str, int] = {}
+        self.global_issued_options_quantity: dict[str, int] = {}
     
     #############################################################################################
     """Query the states of the object"""
@@ -139,6 +141,11 @@ class OracleClient:
     
     def get_self_pending_requests(self) -> dict[str, tuple[int, str, dict]]:
         return copy.deepcopy(self.pending_requests)
+    
+    def get_issued_options_quantity(self, is_global = False) -> dict[str, int]:
+        if is_global:
+            return copy.deepcopy(self.global_issued_options_quantity)
+        return copy.deepcopy(self.self_issued_options_quantity)
     
     #############################################################################################
     """Handlers for sending messages"""
@@ -183,9 +190,8 @@ class OracleClient:
         self.subscription_tasks[uuid] = (5, domain)
         await self.ws_client.send(raw_msg)
 
-    ## TODO, have not implemented yet...
-    async def __issued_options_subscription(self, subscribe: bool, domain: str):
-        uuid, raw_msg = ClientIssuedOptionsSubscription(subscribe=subscribe, domain=domain).to_bytes()
+    async def __issued_options_subscription(self, subscribe: bool, domain: str, account: str):
+        uuid, raw_msg = ClientIssuedOptionsSubscription(subscribe=subscribe, domain=domain, account=account).to_bytes()
         self.subscription_tasks[uuid] = (11, domain)
         await self.ws_client.send(raw_msg)
     
@@ -321,7 +327,7 @@ class OracleClient:
     
     @require_account_and_domain
     async def __deposit(self, symbol: str, amount: int):
-        assert True, "some" # TODO ASSERT deposit symbols
+        assert symbol in [k.split(":")[0] for k in self.positions.keys()], "Invalid symbol"
 
         uuid, raw_msg = ClientDepositRequest(
             domain=self.domain_metadata['Domain'],
@@ -342,7 +348,7 @@ class OracleClient:
     
     @require_account_and_domain
     async def __withdraw(self, symbol: str, amount: int):
-        assert True, "some" # TODO ASSERT withdraw symbols
+        assert symbol in [k.split(":")[0] for k in self.positions.keys()], "Invalid symbol"
 
         uuid, raw_msg = ClientWithdrawRequest(
             domain=self.domain_metadata['Domain'],
@@ -353,6 +359,8 @@ class OracleClient:
             'symbol': symbol,
             'amount': amount
         })
+        print(uuid)
+        print(self.pending_requests)
         await self.ws_client.send(raw_msg)
     
     async def convert(self, conversion: str, size: int):
@@ -377,12 +385,46 @@ class OracleClient:
         await self.ws_client.send(raw_msg)
     
     async def issue_option(self, name, size):
-        # TODO
-        pass
+        try:
+            await self.__issue_options(name, size)
+        except Exception as e:
+            print(f"Error issuing options: {e}")
+    
+    @require_account_and_domain
+    async def __issue_options(self, name, size):
+        assert name in self.domain_metadata['Available Markets']['options'], "Invalid options name"
+
+        uuid, raw_msg = ClientIssueOptionRequest(
+            domain=self.domain_metadata['Domain'],
+            name=name,
+            size=size
+        ).to_bytes(self.account)
+        self.pending_requests[uuid] = (int(time.time() * 1000), 'issue option', {
+            'name': name,
+            'size': size
+        })
+        await self.ws_client.send(raw_msg)
     
     async def exercise_option(self, name, size):
-        # TODO
-        pass
+        try:
+            await self.__exercise_option(name, size)
+        except Exception as e:
+            print(f"Error issuing options: {e}")
+    
+    @require_account_and_domain
+    async def __exercise_option(self, name, size):
+        assert name in self.domain_metadata['Available Markets']['options'], "Invalid options name"
+
+        uuid, raw_msg = ClientExerciseOptionRequest(
+            domain=self.domain_metadata['Domain'],
+            name=name,
+            size=size
+        ).to_bytes(self.account)
+        self.pending_requests[uuid] = (int(time.time() * 1000), 'exercise option', {
+            'name': name,
+            'size': size
+        })
+        await self.ws_client.send(raw_msg)
 
     #############################################################################################
     """Handlers for receiving messages"""
@@ -411,7 +453,6 @@ class OracleClient:
             case ServerResponseUnion.L2BookStream:
                 self.__handle_l2_book_stream(tbl)
             case ServerResponseUnion.IssuedOptionsStream:
-                # TODO
                 self.__handle_issued_options_stream(tbl)
             case ServerResponseUnion.TradesStream:
                 self.__handle_trade_stream(tbl)
@@ -448,13 +489,13 @@ class OracleClient:
             print(f"with details {self.pending_orders[b2s(em.Uuid())][1]}", end=" ")
             print(f"failed from \'{b2s(em.Message())}\'")
             del self.pending_orders[b2s(em.Uuid())]
-        elif em.Uuid() in self.pending_requests:
+        elif b2s(em.Uuid()) in self.pending_requests:
             print(f"\033[1;33m[Warning]\033[0m request {b2s(em.Uuid())}", end=" ")
-            print(f"placed at time {self.pending_orders[b2s(em.Uuid())][0]}", end = " ")
-            print(f"of type: {self.pending_orders[b2s(em.Uuid())][1]}", end = " ")
-            print(f"and details {self.pending_orders[b2s(em.Uuid())][2]}", end=" ")
+            print(f"placed at time {self.pending_requests[b2s(em.Uuid())][0]}", end = " ")
+            print(f"of type: {self.pending_requests[b2s(em.Uuid())][1]}", end = " ")
+            print(f"and details {self.pending_requests[b2s(em.Uuid())][2]}", end=" ")
             print(f"failed from \'{b2s(em.Message())}\'")
-            del self.pending_orders[b2s(em.Uuid())]
+            del self.pending_requests[b2s(em.Uuid())]
         else:
             print(f"\033[1;33m[Warning]\033[0m received failure from uuid: {b2s(em.Uuid())}", end=" ")
             print("but this order was not placed through the current python client")
@@ -790,13 +831,33 @@ class OracleClient:
     def __handle_issued_options_stream(self, tbl):
         ios = IssuedOptionsStream()
         ios.Init(tbl.Bytes, tbl.Pos)
-        match ios.Issuances():
+        match ios.IssuancesType():
             case WsIssuedOptions.IssuedOptionsSnapshot:
-                # TODO
-                pass
+                snapshot = IssuedOptionsSnapshot()
+                iss = ios.Issuances()
+                snapshot.Init(iss.Bytes, iss.Pos)
+
+                for i in range(snapshot.IssuancesLength()):
+                    order = snapshot.Issuances(i)
+                    self.self_issued_options_quantity[b2s(order.Name())] = order.Position()
+                
+                for i in range(snapshot.GlobalIssuancesLength()):
+                    order = snapshot.GlobalIssuances(i)
+                    self.global_issued_options_quantity[b2s(order.Name())] = order.Position()
+
             case WsIssuedOptions.IssuedOptionsDeltaData:
-                # TODO
-                pass
+                deltas = IssuedOptionsDeltaData()
+                iss = ios.Issuances()
+                deltas.Init(iss.Bytes, iss.Pos)
+
+                for i in range(deltas.DeltasLength()):
+                    delta = deltas.Deltas(i)
+                    self.self_issued_options_quantity[b2s(delta.Name())] += delta.Delta()
+
+                for i in range(deltas.DeltasLength()):
+                    delta = deltas.GlobalDeltas(i)
+                    self.global_issued_options_quantity[b2s(delta.Name())] += delta.Delta()
+
             case _:
                 print("Unknown issued options type")
     
@@ -832,7 +893,6 @@ class OracleClient:
     """Handlers for starting and stopping the client"""
     async def start_client(self, print_metadata: bool = False):
         await self.ws_client.connect()
-        # print("WebSocket connected")
         self.listen_task = asyncio.create_task(
             self.ws_client.listen(self.message_handler)
         )
@@ -862,8 +922,8 @@ class OracleClient:
         await self.__open_orders_subscription(subscribe=True, domain=self.domain_metadata['Domain'], account=self.account)
         await self.__positions_subscription(subscribe=True, domain=self.domain_metadata['Domain'], account=self.account)
         await self.__fills_subscription(subscribe=True, domain=self.domain_metadata['Domain'], account=self.account)
+        await self.__issued_options_subscription(subscribe=True, domain=self.domain_metadata['Domain'], account = self.account)
         # await self.__leaderboard_subscription(subscribe=True, domain=self.domain_metadata['Domain']) # does not work TODO
-        # await self.__issued_options_subscription(subscribe=True, domain=self.domain_metadata['Domain'])
 
         counter = 0
         while self.subscription_tasks:
@@ -897,30 +957,6 @@ class OracleClient:
             assert counter < 300, f"Failed to Subscribe to the {market} domain. Timed out after 3 seconds"
 
         print(f"Subscribed to the {market} market successfully!")
-    
-    @require_account_and_domain
-    async def enter_conversions_market(self, conversion: str):
-        counter = 0
-        while not self.domain_metadata['Available Markets']:
-            await asyncio.sleep(0.01)
-            counter += 1
-            assert counter < 300, "No domains available, timed out after 3 seconds"
-
-        assert conversion in self.domain_metadata['Available Markets']['conversions'], f"Invalid conversion market: {conversion}. Available conversions markets are: {self.domain_metadata['Available Markets']['conversions']}"
-        # self.conversions.append(conversion)
-        print(f"Entered {conversion} conversion market successfully!")
-    
-    @require_account_and_domain
-    async def enter_options_market(self, option: str):
-        counter = 0
-        while not self.domain_metadata['Available Markets']:
-            await asyncio.sleep(0.01)
-            counter += 1
-            assert counter < 300, "No domains available, timed out after 3 seconds"
-
-        assert option in self.domain_metadata['Available Markets']['options'], f"Invalid options market: {option}. Available options markets are: {self.domain_metadata['Available Markets']['options']}"
-        # self.options.append(option)
-        print(f"Entered {option} options market successfully! Note that options markets are only for issuing and exercising options, not for trading!")
     
     async def stop_client(self):
         if self.listen_task and not self.listen_task.done():
