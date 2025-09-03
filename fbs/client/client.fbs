@@ -82,9 +82,21 @@ table SubscriptionRequest {
   subscription: gateway.Subscription;
 }
 
+table SetSessionRequest {
+  uuid: string;
+  domain: string;
+  account: string;
+}
+
+table RevokeSessionRequest {
+  uuid: string;
+}
+
 union ClientRequestUnion {
   UnaryRequest,
   SubscriptionRequest,
+  SetSessionRequest,
+  RevokeSessionRequest,
 }
 
 table ClientRequest {

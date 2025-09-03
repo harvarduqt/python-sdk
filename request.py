@@ -3,6 +3,8 @@ import flatbuffers
 
 from fbs_gen.client import (
     UnaryRequest,
+    SetSessionRequest,
+    RevokeSessionRequest,
     ClientRequest,
     AddOrderRequest,
     CancelOrderRequest,
@@ -299,6 +301,53 @@ class ClientIssueOptionRequest:
         ClientRequest.ClientRequestStart(builder)
         ClientRequest.ClientRequestAddRequest(builder, issue_unary_req)
         ClientRequest.ClientRequestAddRequestType(builder, ClientRequestUnion.UnaryRequest)
+        req = ClientRequest.ClientRequestEnd(builder)
+        builder.Finish(req)
+
+        return u, bytes(builder.Output())
+
+class ClientSetSessionRequest:
+    def __init__(self,
+                 domain: str):
+        self.domain = domain
+
+    def to_bytes(self, account: str) -> tuple[str, bytes]:
+        builder = flatbuffers.Builder()
+        domain_off = builder.CreateString(self.domain)
+        account_off = builder.CreateString(account)
+
+        account_off = builder.CreateString(account)
+        u = str(uuid.uuid4())
+        uuid_off = builder.CreateString(u)
+        SetSessionRequest.SetSessionRequestStart(builder)
+        SetSessionRequest.SetSessionRequestAddUuid(builder, uuid_off)
+        SetSessionRequest.SetSessionRequestAddDomain(builder, domain_off)
+        SetSessionRequest.SetSessionRequestAddAccount(builder, account_off)
+        set_session_unary_req = SetSessionRequest.SetSessionRequestEnd(builder)
+
+        # ClientRequest (wrap the union)
+        ClientRequest.ClientRequestStart(builder)
+        ClientRequest.ClientRequestAddRequest(builder, set_session_unary_req)
+        ClientRequest.ClientRequestAddRequestType(builder, ClientRequestUnion.SetSessionRequest)
+        req = ClientRequest.ClientRequestEnd(builder)
+        builder.Finish(req)
+
+        return u, bytes(builder.Output())
+
+class ClientRevokeSessionRequest:
+    def to_bytes() -> tuple[str, bytes]:
+        builder = flatbuffers.Builder()
+
+        u = str(uuid.uuid4())
+        uuid_off = builder.CreateString(u)
+        RevokeSessionRequest.RevokeSessionRequestStart(builder)
+        RevokeSessionRequest.RevokeSessionRequestAddUuid(builder, uuid_off)
+        revoke_session_unary_req = RevokeSessionRequest.RevokeSessionRequestEnd(builder)
+
+        # ClientRequest (wrap the union)
+        ClientRequest.ClientRequestStart(builder)
+        ClientRequest.ClientRequestAddRequest(builder, revoke_session_unary_req)
+        ClientRequest.ClientRequestAddRequestType(builder, ClientRequestUnion.RevokeSessionRequest)
         req = ClientRequest.ClientRequestEnd(builder)
         builder.Finish(req)
 

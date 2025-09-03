@@ -6,3 +6,5 @@ class ClientRequestUnion(object):
     NONE = 0
     UnaryRequest = 1
     SubscriptionRequest = 2
+    SetSessionRequest = 3
+    RevokeSessionRequest = 4
