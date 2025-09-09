@@ -40,7 +40,7 @@ class WSClient:
         try:
             # If your SDK needs attaching, do it here after connect.
             headers = {
-                "Authorization": f"Bearer {API_KEY}"
+                "Authorization": f"Bearer {self.api_key}"
             }
             self._ws = await websockets.connect(self.url, extra_headers=headers)
             # Example: oracle_py_sdk.attach(self._ws)  # if required
@@ -73,7 +73,17 @@ class WSClient:
                         return
                 except asyncio.CancelledError:
                     raise
-                except (OSError, websockets.ConnectionClosed):
+                except websockets.InvalidStatusCode as e:
+                    # This is raised if server rejects handshake (e.g. 401 Unauthorized)
+                    if e.status_code == 401:
+                        print("❌ Authentication failed (401 Unauthorized) — exiting listen loop")
+                        return
+                    else:
+                        print(f"❌ Server rejected WebSocket connection with status {e.status_code}")
+                        return
+                except (OSError, websockets.ConnectionClosed) as e:
+                    # transient errors: retry with backoff
+                    print(f"⚠️ Connection error: {e}, retrying in {backoff}s")
                     await self.close()
                     await asyncio.sleep(backoff)
                     backoff = min(backoff * 2, retry_max)

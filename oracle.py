@@ -211,7 +211,7 @@ class OracleClient:
             await self.__place_limit_order(market, side, price, size, tif)
         except Exception as e:
             print(f"Error placing limit order. {e}")
-    
+        
     @require_account_and_domain
     async def __place_limit_order(self, market: str, side: int, price: int, size: int, tif: int):
         assert market in self.domain_metadata['Available Markets']['markets'],f"Invalid market: {market}. Available Markets are: {self.domain_metadata['Available Markets']}"
@@ -910,13 +910,27 @@ class OracleClient:
         if print_metadata:
             print("Oracle Metadata:", self.oracle_metadata)
 
+    async def __set_account_and_domain(self, account: str, domain: str):
+        assert market in self.domain_metadata['Available Markets']['markets'],f"Invalid market: {market}. Available Markets are: {self.domain_metadata['Available Markets']}"
+        assert side in [0, 1], f"Invalid side enumerate: {side}"
+        assert tif in [0, 1, 2], f"Invalid tif enumerate: {side}"
+        assert size > 0, "Size must be positive for orders"
+        assert price > 0, "Price must be positive for orders"
+
+        uuid, raw_msg = ClientSetSessionRequest(
+            domain = self.domain_metadata['Domain'],
+        ).to_bytes(self.account)
+        await self.ws_client.send(raw_msg)
+        
+
     async def set_account_and_domain(self, account: str, domain: str, print_metadata: bool = False):
         assert not self.account, "Account already set"
         assert not self.domain_metadata['Domain'], "Domain already set"        
         assert domain in self.oracle_metadata['Available Domains'], f"Invalid domain: {domain}. Available Domains are: {self.oracle_metadata['Available Domains']}"
         self.account = account
         self.domain_metadata['Domain'] = domain
-
+        
+        await self.__set_account_and_domain(account, domain)
         await self.__domain_meta_subscription(subscribe=True, domain=self.domain_metadata['Domain'])
         await self.__domain_market_subscription(subscribe=True, domain=self.domain_metadata['Domain'])
         await self.__open_orders_subscription(subscribe=True, domain=self.domain_metadata['Domain'], account=self.account)
