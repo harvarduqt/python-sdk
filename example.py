@@ -2,8 +2,8 @@ from oracle import OracleClient
 from enums import Side, Tif
 import asyncio
 
-# haorzhe = OracleClient("ws://localhost:8000/ws")
-haorzhe = OracleClient("ws://api.oracle.huqt.xyz/ws")
+haorzhe = OracleClient("ws://localhost:8000/ws")
+
 
 async def trade_handler():
     print("\n\033[1;32m-------- Below are the logs for user algorithm --------\033[0m")
