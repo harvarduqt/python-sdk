@@ -75,9 +75,9 @@ def require_account_and_domain(func):
     return wrapper
 
 class OracleClient:
-    def __init__(self, websocket_url: str):
+    def __init__(self, websocket_url: str, api_key: str):
         print(f"\033[1;32mWelcome to HUQT OracleClient!\033[0m")
-        self.ws_client = WSClient(websocket_url)
+        self.ws_client = WSClient(websocket_url, api_key)
         self.listen_task: asyncio.Task | None = None
         self.account = None
 
