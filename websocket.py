@@ -5,13 +5,14 @@ import websockets
 OnMessage = Callable[[bytes], Awaitable[None]]
 
 class WSClient:
-    def __init__(self, url: str):
+    def __init__(self, url: str, api_key: str):
         self.url = url
         self._ws: Optional[websockets.WebSocketClientProtocol] = None
         self._lock = asyncio.Lock()
         self._open_event = asyncio.Event()
         self._connecting_task: Optional[asyncio.Task] = None
         self.ready = asyncio.Event()
+        self.api_key = api_key
 
     async def connect(self) -> None:
         """
@@ -38,7 +39,10 @@ class WSClient:
     async def _do_connect(self) -> None:
         try:
             # If your SDK needs attaching, do it here after connect.
-            self._ws = await websockets.connect(self.url)
+            headers = {
+                "Authorization": f"Bearer {API_KEY}"
+            }
+            self._ws = await websockets.connect(self.url, extra_headers=headers)
             # Example: oracle_py_sdk.attach(self._ws)  # if required
         except Exception:
             # Signal waiters that we won't open; leave ws as None
