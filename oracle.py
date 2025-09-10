@@ -22,6 +22,7 @@ from subscribe import (
 )
 
 from request import (
+    ClientSetSessionRequest,
     ClientAddOrderRequest,
     ClientCancelOrderRequest,
     ClientDepositRequest,
@@ -504,7 +505,9 @@ class OracleClient:
         ssr = SimpleSuccessResponse()
         ssr.Init(tbl.Bytes, tbl.Pos)
 
-        if b2s(ssr.Uuid()) in self.pending_requests:
+        if b2s(ssr.Uuid()) in self.subscription_tasks:
+            del self.subscription_tasks[b2s(ssr.Uuid())]
+        elif b2s(ssr.Uuid()) in self.pending_requests:
             del self.pending_requests[b2s(ssr.Uuid())]
         else:
             print(f"\033[1;33m[Warning]\033[0m received success from uuid: {b2s(ssr.Uuid())}", end=" ")
@@ -911,15 +914,11 @@ class OracleClient:
             print("Oracle Metadata:", self.oracle_metadata)
 
     async def __set_account_and_domain(self, account: str, domain: str):
-        assert market in self.domain_metadata['Available Markets']['markets'],f"Invalid market: {market}. Available Markets are: {self.domain_metadata['Available Markets']}"
-        assert side in [0, 1], f"Invalid side enumerate: {side}"
-        assert tif in [0, 1, 2], f"Invalid tif enumerate: {side}"
-        assert size > 0, "Size must be positive for orders"
-        assert price > 0, "Price must be positive for orders"
-
         uuid, raw_msg = ClientSetSessionRequest(
             domain = self.domain_metadata['Domain'],
         ).to_bytes(self.account)
+        self.subscription_tasks[uuid] = (10, "set session")
+        print(uuid)
         await self.ws_client.send(raw_msg)
         
 
@@ -931,6 +930,13 @@ class OracleClient:
         self.domain_metadata['Domain'] = domain
         
         await self.__set_account_and_domain(account, domain)
+
+        counter = 0
+        while self.subscription_tasks:
+            await asyncio.sleep(0.01)
+            counter += 1
+            assert counter < 300, f"Failed to receive a validation from server."
+
         await self.__domain_meta_subscription(subscribe=True, domain=self.domain_metadata['Domain'])
         await self.__domain_market_subscription(subscribe=True, domain=self.domain_metadata['Domain'])
         await self.__open_orders_subscription(subscribe=True, domain=self.domain_metadata['Domain'], account=self.account)
