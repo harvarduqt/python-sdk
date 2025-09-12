@@ -3,26 +3,22 @@ from enums import Side, Tif
 import asyncio
 
 # haorzhe = OracleClient("ws://localhost:8000/ws")
-haorzhe = OracleClient("wss://api.oracle.huqt.xyz/ws", "73d07237-0761-46e5-be6e-bd449a7bf19c")
+haorzhe = OracleClient("wss://api.oracle.huqt.xyz/ws", "3533f6c2-f662-40b4-975c-ef4c7ae80f3c")
 
 async def trade_handler():
     print("\n\033[1;32m-------- Below are the logs for user algorithm --------\033[0m")
-    # all user logic should go here
-    # market states/open orders/everything is tracked nicely by the oracle client
-    # you should have like a while True loop to keep updating
-    # await haorzhe.
-    await haorzhe.place_limit_order("book", Side.Buy, 10, 10, Tif.Alo)
-    
-    while True:
-        print("hello world!")
-        await asyncio.sleep(10)
+    # cancelling all open orders
+    orders = haorzhe.get_self_open_orders()
+    for key, value in orders.items():
+        for order in value:
+            await haorzhe.cancel_order(key, order['oid'])
 
 async def main():
     ## change these lines for only the markets you want
     await haorzhe.start_client()
-    await haorzhe.set_account_and_domain(account="joe", domain="test", print_metadata=True)
+    await haorzhe.set_account_and_domain(account="323bdb13-6b2e-4466-9a0b-46f8de877d50", domain="test", print_metadata=True)
 
-    await haorzhe.subscribe_market("book")
+    await haorzhe.subscribe_market("DCE/USD")
 
     ## DO NOT CHANGE BELOW THIS LINE
     task = asyncio.create_task(trade_handler())
