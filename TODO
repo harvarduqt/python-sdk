@@ -13,5 +13,5 @@ union ServerResponseUnion {
   DomainsStream,                DONE
   DomainMarketDataStream,       DONE
   LedgerMetaStream,             DONE
-  IssuedOptionsStream,
+  IssuedOptionsStream,          DONE
 }

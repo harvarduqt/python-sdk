@@ -1,7 +1,7 @@
 import uuid
 import flatbuffers
 
-from fbs_gen.client import (
+from .fbs_gen.client import (
     UnaryRequest,
     SetSessionRequest,
     RevokeSessionRequest,
@@ -15,11 +15,11 @@ from fbs_gen.client import (
     IssueOptionRequest,
 )
 
-from fbs_gen.client.UnaryRequestUnion import UnaryRequestUnion
-from fbs_gen.client.ClientRequestUnion import ClientRequestUnion
-from fbs_gen.client.Tif import Tif
-from fbs_gen.client.OrderType import OrderType
-from fbs_gen.gateway.Side import Side
+from .fbs_gen.client.UnaryRequestUnion import UnaryRequestUnion
+from .fbs_gen.client.ClientRequestUnion import ClientRequestUnion
+from .fbs_gen.client.Tif import Tif
+from .fbs_gen.client.OrderType import OrderType
+from .fbs_gen.gateway.Side import Side
 
 class ClientAddOrderRequest:
     def __init__(self,

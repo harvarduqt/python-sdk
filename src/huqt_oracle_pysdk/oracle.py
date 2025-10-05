@@ -1,4 +1,4 @@
-from websocket import WSClient
+from .websocket import WSClient
 import copy
 import asyncio
 import os, sys
@@ -7,7 +7,7 @@ import time
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(CURRENT_DIR, "fbs_gen"))
 
-from subscribe import (
+from .subscribe import (
     ClientLedgerMetaSubscription,
     ClientDomainMetaSubscription,
     ClientDomainsSubscription,
@@ -21,7 +21,7 @@ from subscribe import (
     ClientL2BookSubscription
 )
 
-from request import (
+from .request import (
     ClientSetSessionRequest,
     ClientAddOrderRequest,
     ClientCancelOrderRequest,
@@ -32,38 +32,38 @@ from request import (
     ClientIssueOptionRequest
 )
 
-from fbs_gen.gateway.ServerResponse import ServerResponse
-from fbs_gen.gateway.ServerResponseUnion import ServerResponseUnion
-from fbs_gen.gateway.SubscriptionResponse import SubscriptionResponse
-from fbs_gen.gateway.DomainsStream import DomainsStream
-from fbs_gen.gateway.DomainMetaStream import DomainMetaStream
-from fbs_gen.gateway.DomainMarketDataStream import DomainMarketDataStream
-from fbs_gen.gateway.LedgerMetaStream import LedgerMetaStream
-from fbs_gen.gateway.OpenOrdersStream import OpenOrdersStream
-from fbs_gen.gateway.WsOpenOrders import WsOpenOrders
-from fbs_gen.gateway.OpenOrdersSnapshot import OpenOrdersSnapshot
-from fbs_gen.gateway.OrderDeltasData import OrderDeltasData
-from fbs_gen.gateway.FillsStream import FillsStream
-from fbs_gen.gateway.PositionsStream import PositionsStream
-from fbs_gen.gateway.PositionsSnapshot import PositionsSnapshot
-from fbs_gen.gateway.PositionDeltasData import PositionDeltasData
-from fbs_gen.gateway.WsPositions import WsPositions
-from fbs_gen.gateway.L2BookStream import L2BookStream
-from fbs_gen.gateway.IssuedOptionsStream import IssuedOptionsStream
-from fbs_gen.gateway.WsIssuedOptions import WsIssuedOptions
-from fbs_gen.gateway.TradesStream import TradesStream
-from fbs_gen.gateway.AddOrderResponse import AddOrderResponse
-from fbs_gen.gateway.ErrorMessage import ErrorMessage
-from fbs_gen.gateway.SimpleSuccessResponse import SimpleSuccessResponse
-from fbs_gen.gateway.AuctionMetaUnion import AuctionMetaUnion
-from fbs_gen.gateway.TwoSidedMeta import TwoSidedMeta
-from fbs_gen.gateway.SecondPriceMeta import SecondPriceMeta
-from fbs_gen.gateway.IssuedOptionsSnapshot import IssuedOptionsSnapshot
-from fbs_gen.gateway.IssuedOptionsDeltaData import IssuedOptionsDeltaData
+from .fbs_gen.gateway.ServerResponse import ServerResponse
+from .fbs_gen.gateway.ServerResponseUnion import ServerResponseUnion
+from .fbs_gen.gateway.SubscriptionResponse import SubscriptionResponse
+from .fbs_gen.gateway.DomainsStream import DomainsStream
+from .fbs_gen.gateway.DomainMetaStream import DomainMetaStream
+from .fbs_gen.gateway.DomainMarketDataStream import DomainMarketDataStream
+from .fbs_gen.gateway.LedgerMetaStream import LedgerMetaStream
+from .fbs_gen.gateway.OpenOrdersStream import OpenOrdersStream
+from .fbs_gen.gateway.WsOpenOrders import WsOpenOrders
+from .fbs_gen.gateway.OpenOrdersSnapshot import OpenOrdersSnapshot
+from .fbs_gen.gateway.OrderDeltasData import OrderDeltasData
+from .fbs_gen.gateway.FillsStream import FillsStream
+from .fbs_gen.gateway.PositionsStream import PositionsStream
+from .fbs_gen.gateway.PositionsSnapshot import PositionsSnapshot
+from .fbs_gen.gateway.PositionDeltasData import PositionDeltasData
+from .fbs_gen.gateway.WsPositions import WsPositions
+from .fbs_gen.gateway.L2BookStream import L2BookStream
+from .fbs_gen.gateway.IssuedOptionsStream import IssuedOptionsStream
+from .fbs_gen.gateway.WsIssuedOptions import WsIssuedOptions
+from .fbs_gen.gateway.TradesStream import TradesStream
+from .fbs_gen.gateway.AddOrderResponse import AddOrderResponse
+from .fbs_gen.gateway.ErrorMessage import ErrorMessage
+from .fbs_gen.gateway.SimpleSuccessResponse import SimpleSuccessResponse
+from .fbs_gen.gateway.AuctionMetaUnion import AuctionMetaUnion
+from .fbs_gen.gateway.TwoSidedMeta import TwoSidedMeta
+from .fbs_gen.gateway.SecondPriceMeta import SecondPriceMeta
+from .fbs_gen.gateway.IssuedOptionsSnapshot import IssuedOptionsSnapshot
+from .fbs_gen.gateway.IssuedOptionsDeltaData import IssuedOptionsDeltaData
 
-from fbs_gen.client.Tif import Tif
-from fbs_gen.client.OrderType import OrderType
-from fbs_gen.gateway.Side import Side
+from .fbs_gen.client.Tif import Tif
+from .fbs_gen.client.OrderType import OrderType
+from .fbs_gen.gateway.Side import Side
 
 def b2s(b):
     return b.decode("utf-8") if b is not None else None
@@ -630,9 +630,9 @@ class OracleClient:
             opt = dms.Options(i)
             self.domain_metadata['Options Markets Metadata'].append({
                 "name": b2s(opt.Name()),
-                "from": [(b2s(opt.From(j).Symbol()), opt.From(j).Amount()) for j in range(opt.ToLength())],
+                "from": [(b2s(opt.From(j).Symbol()), opt.From(j).Amount()) for j in range(opt.FromLength())],
                 "to": [(b2s(opt.To(j).Symbol()), opt.To(j).Amount()) for j in range(opt.ToLength())],
-                "flat_fee": [(b2s(opt.FlatFee(j).Symbol()), opt.FlatFee(j).Amount()) for j in range(opt.ToLength())],
+                "flat_fee": [(b2s(opt.FlatFee(j).Symbol()), opt.FlatFee(j).Amount()) for j in range(opt.FlatFeeLength())],
                 "option": b2s(opt.Option())
             })
         

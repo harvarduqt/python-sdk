@@ -1,5 +1,5 @@
-from oracle import OracleClient
-from enums import Side, Tif
+from huqt_oracle_pysdk import OracleClient
+# from enums import Side, Tif
 import asyncio
 
 haorzhe = OracleClient("ws://localhost:8000/ws")

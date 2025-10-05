@@ -1,14 +1,14 @@
 import uuid
 import flatbuffers
 
-from fbs_gen.client.ClientRequestUnion import ClientRequestUnion
-from fbs_gen.client import (
+from .fbs_gen.client.ClientRequestUnion import ClientRequestUnion
+from .fbs_gen.client import (
     ClientRequest,
     SubscriptionRequest,
 )
 
-from fbs_gen.gateway.Subscription import Subscription
-from fbs_gen.gateway import (
+from .fbs_gen.gateway.Subscription import Subscription
+from .fbs_gen.gateway import (
     TradeSubscription,
     FillsSubscription,
     OpenOrdersSubscription,
