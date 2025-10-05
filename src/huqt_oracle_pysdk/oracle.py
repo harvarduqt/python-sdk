@@ -76,9 +76,8 @@ def require_account_and_domain(func):
     return wrapper
 
 class OracleClient:
-    def __init__(self, websocket_url: str, api_key: str):
+    def __init__(self):
         print(f"\033[1;32mWelcome to HUQT OracleClient!\033[0m")
-        self.ws_client = WSClient(websocket_url, api_key)
         self.listen_task: asyncio.Task | None = None
         self.account = None
 
@@ -894,7 +893,14 @@ class OracleClient:
 
     #############################################################################################
     """Handlers for starting and stopping the client"""
-    async def start_client(self, print_metadata: bool = False):
+    async def start_client(self,
+                           account: str,
+                           api_key: str,
+                           domain: str,
+                           print_oracle_metadata: bool = False,
+                           print_domain_metadata: bool = False
+                           ):
+        self.ws_client = WSClient("wss://api.oracle.huqt.xyz/ws", api_key)
         await self.ws_client.connect()
         self.listen_task = asyncio.create_task(
             self.ws_client.listen(self.message_handler)
@@ -910,26 +916,25 @@ class OracleClient:
             counter += 1
             assert counter < 300, "Oracle is unavailable, timed out after 3 seconds."
         
-        if print_metadata:
+        if print_oracle_metadata:
             print("Oracle Metadata:", self.oracle_metadata)
+        await self.__set_account_and_domain(account, domain, print_domain_metadata)
 
-    async def __set_account_and_domain(self, account: str, domain: str):
+    async def __set_session(self):
         uuid, raw_msg = ClientSetSessionRequest(
             domain = self.domain_metadata['Domain'],
         ).to_bytes(self.account)
         self.subscription_tasks[uuid] = (10, "set session")
-        print(uuid)
         await self.ws_client.send(raw_msg)
-        
 
-    async def set_account_and_domain(self, account: str, domain: str, print_metadata: bool = False):
+    async def __set_account_and_domain(self, account: str, domain: str, print_metadata: bool):
         assert not self.account, "Account already set"
         assert not self.domain_metadata['Domain'], "Domain already set"        
         assert domain in self.oracle_metadata['Available Domains'], f"Invalid domain: {domain}. Available Domains are: {self.oracle_metadata['Available Domains']}"
         self.account = account
         self.domain_metadata['Domain'] = domain
         
-        await self.__set_account_and_domain(account, domain)
+        await self.__set_session()
 
         counter = 0
         while self.subscription_tasks:
