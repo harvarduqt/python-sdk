@@ -1,4 +1,4 @@
-from .websocket import WSClient
+from .websocket import WSClient, make_client_ssl_context
 import copy
 import asyncio
 import os, sys
@@ -900,7 +900,9 @@ class OracleClient:
                            print_oracle_metadata: bool = False,
                            print_domain_metadata: bool = False
                            ):
-        self.ws_client = WSClient("wss://api.oracle.huqt.xyz/ws", api_key)
+        ctx = make_client_ssl_context()
+        # print("created ctx: ", ctx)
+        self.ws_client = WSClient("wss://api.oracle.huqt.xyz/ws", api_key, ctx)
         await self.ws_client.connect()
         self.listen_task = asyncio.create_task(
             self.ws_client.listen(self.message_handler)

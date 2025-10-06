@@ -2,10 +2,50 @@ from typing import Optional, Awaitable, Callable
 import asyncio
 import websockets
 
+import os, ssl
+
+def make_client_ssl_context(ca_bundle: Optional[str] = None) -> ssl.SSLContext:
+    """
+    Create a strict SSL context:
+    - Defaults to system trust store (best).
+    - Falls back to certifi bundle if system store isn't usable.
+    - If ca_bundle is provided, load that (PEM file) in addition to system roots.
+    - Honors SSL_CERT_FILE / SSL_CERT_DIR if user sets them.
+    """
+    # Start with a secure default context (cert validation + hostname checking on)
+    ctx = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+
+    # If caller provided an explicit bundle, add it
+    if ca_bundle:
+        ctx.load_verify_locations(cafile=ca_bundle)
+        return ctx
+
+    # If user provided env overrides, default context already respects them.
+    # But in minimal images (e.g., some containers) system roots may be missing.
+    # In that case, try certifi as a fallback.
+    try:
+        # Test that we have any CA loaded (OpenSSL doesn't expose a direct check;
+        # we'll attempt to add certifi only if explicitly requested or if desired).
+        pass
+    except Exception:
+        pass
+
+    # Optional fallback to certifi if you want guaranteed roots:
+    try:
+        import certifi  # add as a dependency if you want this fallback
+        ctx.load_verify_locations(cafile=certifi.where())
+    except Exception:
+        # If certifi not installed or load fails, we still have default context.
+        # Let the connection error surface rather than silently disabling verify.
+        pass
+
+    return ctx
+
+
 OnMessage = Callable[[bytes], Awaitable[None]]
 
 class WSClient:
-    def __init__(self, url: str, api_key: str):
+    def __init__(self, url: str, api_key: str, ctx):
         self.url = url
         self._ws: Optional[websockets.WebSocketClientProtocol] = None
         self._lock = asyncio.Lock()
@@ -13,6 +53,7 @@ class WSClient:
         self._connecting_task: Optional[asyncio.Task] = None
         self.ready = asyncio.Event()
         self.api_key = api_key
+        self.ctx = ctx
 
     async def connect(self) -> None:
         """
@@ -42,7 +83,7 @@ class WSClient:
             headers = {
                 "Authorization": f"Bearer {self.api_key}"
             }
-            self._ws = await websockets.connect(self.url, extra_headers=headers)
+            self._ws = await websockets.connect(self.url, extra_headers=headers, ssl=self.ctx)
             # Example: oracle_py_sdk.attach(self._ws)  # if required
         except Exception:
             # Signal waiters that we won't open; leave ws as None
