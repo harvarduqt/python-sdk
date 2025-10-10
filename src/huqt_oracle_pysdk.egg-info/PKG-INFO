@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: huqt_oracle_pysdk
-Version: 0.1.3
+Version: 0.1.5
 Summary: HUQT Oracle Python SDK for bot building
 Author-email: Haozhe Yang <haozheyang@gmail.com>
 License: MIT
@@ -10,6 +10,7 @@ Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 Requires-Dist: flatbuffers==25.2.10
 Requires-Dist: websockets==11.0.3
+Requires-Dist: python-dotenv==1.1.1
 
 # avaliable endpoints for the 'OracleClient' object
 

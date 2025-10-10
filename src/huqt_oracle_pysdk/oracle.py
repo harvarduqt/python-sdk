@@ -76,10 +76,14 @@ def require_account_and_domain(func):
     return wrapper
 
 class OracleClient:
-    def __init__(self):
+    def __init__(self, pself: bool = False, poracle: bool = False, pdomain: bool = False):
         print(f"\033[1;32mWelcome to HUQT OracleClient!\033[0m")
         self.listen_task: asyncio.Task | None = None
         self.account = None
+
+        self.print_self_metadata = pself
+        self.print_oracle_metadata = poracle
+        self.print_domain_metadata = pdomain
 
         self.subscriptions: dict[int, list] = {}
         self.subscription_tasks: dict[str, tuple[int, str]] = {}
@@ -359,8 +363,6 @@ class OracleClient:
             'symbol': symbol,
             'amount': amount
         })
-        print(uuid)
-        print(self.pending_requests)
         await self.ws_client.send(raw_msg)
     
     async def convert(self, conversion: str, size: int):
@@ -409,7 +411,7 @@ class OracleClient:
         try:
             await self.__exercise_option(name, size)
         except Exception as e:
-            print(f"Error issuing options: {e}")
+            print(f"Error exercise options: {e}")
     
     @require_account_and_domain
     async def __exercise_option(self, name, size):
@@ -554,7 +556,6 @@ class OracleClient:
         ds.Init(tbl.Bytes, tbl.Pos)
         if not self.oracle_metadata['Available Domains']:
             self.oracle_metadata['Available Domains'] = [b2s(ds.Domains(i)) for i in range(ds.DomainsLength())]
-            print("Available domains:", self.oracle_metadata['Available Domains'])
         elif self.oracle_metadata['Available Domains'] == [b2s(ds.Domains(i)) for i in range(ds.DomainsLength())]:
             pass
         else:
@@ -589,7 +590,6 @@ class OracleClient:
 
         if not self.domain_metadata['Available Markets']:
             self.domain_metadata['Available Markets'] = market_names
-            print("Available markets:", self.domain_metadata['Available Markets'])
             self.__construct_market_meta(dms)
         elif self.domain_metadata['Available Markets'] == market_names:
             pass
@@ -792,7 +792,6 @@ class OracleClient:
                     position = snapshot.Positions(i)
                     name = b2s(position.Symbol()) + ':' + ('main' if position.AccountType() == 0 else 'collateral')
                     self.positions[name] = position.Position()
-                print("Current Account Positions:", self.positions)
             case WsPositions.PositionDeltasData:
                 deltas = PositionDeltasData()
                 positions = ps.Positions()
@@ -896,18 +895,17 @@ class OracleClient:
     async def start_client(self,
                            account: str,
                            api_key: str,
-                           domain: str,
-                           print_oracle_metadata: bool = False,
-                           print_domain_metadata: bool = False
+                           domain: str
                            ):
         ctx = make_client_ssl_context()
-        # print("created ctx: ", ctx)
         self.ws_client = WSClient("wss://api.oracle.huqt.xyz/ws", api_key, ctx)
         await self.ws_client.connect()
         self.listen_task = asyncio.create_task(
             self.ws_client.listen(self.message_handler)
         )
-        print("WebSocket client started, listening for messages...")
+
+        if self.print_self_metadata:
+            print("WebSocket client started, listening for messages...")
 
         await self.__domain_subscription(subscribe=True)
         await self.__ledger_meta_subscription(subscribe=True)
@@ -918,9 +916,17 @@ class OracleClient:
             counter += 1
             assert counter < 300, "Oracle is unavailable, timed out after 3 seconds."
         
-        if print_oracle_metadata:
+        if self.print_oracle_metadata:
             print("Oracle Metadata:", self.oracle_metadata)
-        await self.__set_account_and_domain(account, domain, print_domain_metadata)
+        await self.__set_account_and_domain(account, domain)
+        if self.print_self_metadata:
+            print("Available domains:", self.oracle_metadata['Available Domains'])
+            print("Available markets:", self.domain_metadata['Available Markets'])
+            print("Current Account Positions:", self.positions)
+            print("\033[1;32mOracleClient started successfully!\033[0m")
+        if self.print_domain_metadata:
+            print(f"Domain Metadata: {self.domain_metadata}")
+
 
     async def __set_session(self):
         uuid, raw_msg = ClientSetSessionRequest(
@@ -929,7 +935,7 @@ class OracleClient:
         self.subscription_tasks[uuid] = (10, "set session")
         await self.ws_client.send(raw_msg)
 
-    async def __set_account_and_domain(self, account: str, domain: str, print_metadata: bool):
+    async def __set_account_and_domain(self, account: str, domain: str):
         assert not self.account, "Account already set"
         assert not self.domain_metadata['Domain'], "Domain already set"        
         assert domain in self.oracle_metadata['Available Domains'], f"Invalid domain: {domain}. Available Domains are: {self.oracle_metadata['Available Domains']}"
@@ -957,11 +963,6 @@ class OracleClient:
             await asyncio.sleep(0.01)
             counter += 1
             assert counter < 300, f"Failed to Subscribe to the {self.domain_metadata['Domain']} domain. Timed out after 3 seconds"
-
-        print("\033[1;32mOracleClient started successfully!\033[0m")
-        # print(f"\033[1;32mSelected {domain} domain successfully!\033[0m")
-        if print_metadata:
-            print(f"Domain Metadata: {self.domain_metadata}")
     
     @require_account_and_domain
     async def subscribe_market(self, market: str):
@@ -972,7 +973,6 @@ class OracleClient:
             assert counter < 300, "No domains available, timed out after 3 seconds"
 
         assert market in self.domain_metadata['Available Markets']['markets'], f"Invalid market: {market}. Available Markets are: {self.domain_metadata['Available Markets']['markets']}"
-        # self.markets.append(market)
 
         await self.__l2_book_subscription(subscribe=True, domain=self.domain_metadata['Domain'], market=market)
         await self.__trade_subscription(subscribe=True, domain=self.domain_metadata['Domain'], market=market)
@@ -983,7 +983,8 @@ class OracleClient:
             counter += 1
             assert counter < 300, f"Failed to Subscribe to the {market} domain. Timed out after 3 seconds"
 
-        print(f"Subscribed to the {market} market successfully!")
+        if self.print_self_metadata:
+            print(f"Subscribed to the {market} market successfully!")
     
     async def stop_client(self):
         if self.listen_task and not self.listen_task.done():

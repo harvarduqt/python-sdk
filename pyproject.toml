@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "huqt_oracle_pysdk"
-version = "0.1.3"
+version = "0.1.5"
 description = "HUQT Oracle Python SDK for bot building"
 readme = "README.md"
 license = { text = "MIT" }
@@ -14,7 +14,8 @@ authors = [
 ]
 dependencies = [
   "flatbuffers==25.2.10",
-  "websockets==11.0.3"
+  "websockets==11.0.3",
+  "python-dotenv==1.1.1"
 ]
 
 [project.urls]
